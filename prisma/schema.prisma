@@ -1,0 +1,85 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Restaurant {
+  id               String    @id @default(uuid())
+  name             String
+  slug             String    @unique
+  email            String?
+  phone            String?
+  address          String?
+  city             String?
+  country          String?
+  stripe_account_id String?
+  deposit_amount   Int       @default(0)
+  created_at       DateTime  @default(now())
+
+  tables           Table[]
+  reservations     Reservation[]
+  restaurantUsers  RestaurantUser[]
+}
+
+model Table {
+  id            String   @id @default(uuid())
+  restaurant_id String
+  name          String
+  capacity      Int
+  created_at    DateTime @default(now())
+
+  restaurant    Restaurant @relation(fields: [restaurant_id], references: [id], onDelete: Cascade)
+  reservations  Reservation[]
+
+  @@index([restaurant_id])
+  @@unique([restaurant_id, name])
+}
+
+model Reservation {
+  id                      String   @id @default(uuid())
+  restaurant_id           String
+  table_id                String
+  customer_name           String
+  customer_email          String?
+  customer_phone          String?
+  guests                  Int
+  reservation_date        DateTime // usaremos solo la parte de fecha
+  reservation_time        DateTime // usaremos solo la parte de hora
+  deposit_paid            Boolean  @default(false)
+  deposit_amount          Int      @default(0)
+  stripe_payment_intent   String?
+  stripe_checkout_session_id String?
+  status                  String   @default("pending")
+  created_at              DateTime @default(now())
+
+  restaurant              Restaurant @relation(fields: [restaurant_id], references: [id], onDelete: Cascade)
+  table                   Table      @relation(fields: [table_id], references: [id])
+
+  @@index([restaurant_id])
+  @@index([reservation_date])
+  @@index([reservation_time])
+  @@index([restaurant_id, reservation_date, reservation_time])
+}
+
+model RestaurantUser {
+  id            String   @id @default(uuid())
+  restaurant_id String
+  email         String
+  role          String
+  created_at    DateTime @default(now())
+
+  restaurant    Restaurant @relation(fields: [restaurant_id], references: [id], onDelete: Cascade)
+
+  @@index([restaurant_id])
+  @@unique([restaurant_id, email])
+}

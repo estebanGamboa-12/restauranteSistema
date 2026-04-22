@@ -1,0 +1,12 @@
+/* Paco's Food — paleta carta (marrón cálido / naranja quemado / crema / dorado) */
+:root {
+  --xalisco-black: #1a110d;              /* marrón casi negro (base profunda) */
+  --xalisco-black-soft: #2e1f16;         /* marrón café (cards, secciones suaves) */
+  --xalisco-burnt-orange: #e86c3e;       /* naranja quemado (CTA principal) */
+  --xalisco-burnt-orange-hover: #f47d4f; /* naranja más luminoso (hover CTA) */
+  --xalisco-gold: #cfa260;               /* dorado envejecido (detalles) */
+  --xalisco-gold-bright: #f5c87a;        /* dorado brillante (highlight) */
+  --xalisco-cream: #f7ecd3;              /* crema cálida (texto sobre oscuro) */
+  --xalisco-muted: #c9b496;              /* crema apagada (texto secundario) */
+  --xalisco-border: rgba(247, 236, 211, 0.14); /* bordes sutiles sobre fondo oscuro */
+}

@@ -8,28 +8,40 @@
   .text-balance {
     text-wrap: balance;
   }
+
+  /* GPU acceleration: promote to own layer for 60fps (no will-change to avoid memory overhead) */
+  .gpu-layer-idle {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  /* Below-the-fold sections: browser can skip rendering until near viewport */
+  .content-visibility-auto {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 400px;
+  }
 }
 
 @layer base {
   :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
+    --background: #1a110d;
+    --foreground: #f7ecd3;
+    --card: #2e1f16;
+    --card-foreground: #f7ecd3;
+    --popover: #2e1f16;
+    --popover-foreground: #f7ecd3;
+    --primary: #e86c3e;
+    --primary-foreground: #1a110d;
+    --secondary: #3a2a1e;
+    --secondary-foreground: #f7ecd3;
+    --muted: rgba(247, 236, 211, 0.08);
+    --muted-foreground: #c9b496;
+    --accent: #cfa260;
+    --accent-foreground: #1a110d;
     --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
+    --border: rgba(247, 236, 211, 0.14);
+    --input: rgba(247, 236, 211, 0.10);
+    --ring: #e86c3e;
     --chart-1: oklch(0.809 0.105 251.813);
     --chart-2: oklch(0.623 0.214 259.815);
     --chart-3: oklch(0.546 0.245 262.881);
@@ -46,24 +58,24 @@
     --sidebar-ring: oklch(0.708 0 0);
   }
   .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
+    --background: #1a110d;
+    --foreground: #f7ecd3;
+    --card: #2e1f16;
+    --card-foreground: #f7ecd3;
+    --popover: #2e1f16;
+    --popover-foreground: #f7ecd3;
+    --primary: #e86c3e;
+    --primary-foreground: #1a110d;
+    --secondary: #3a2a1e;
+    --secondary-foreground: #f7ecd3;
+    --muted: rgba(247, 236, 211, 0.08);
+    --muted-foreground: #c9b496;
+    --accent: #cfa260;
+    --accent-foreground: #1a110d;
     --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
+    --border: rgba(247, 236, 211, 0.14);
+    --input: rgba(247, 236, 211, 0.10);
+    --ring: #e86c3e;
     --chart-1: oklch(0.809 0.105 251.813);
     --chart-2: oklch(0.623 0.214 259.815);
     --chart-3: oklch(0.546 0.245 262.881);
@@ -82,12 +94,30 @@
     --font-sans: var(--font-sans);
   }
   * {
-    @apply border-border outline-ring/50;
+    border-color: var(--border);
+    outline-color: var(--ring);
   }
   body {
-    @apply bg-background text-foreground;
+    background-color: var(--background);
+    color: var(--foreground);
   }
   html {
-    @apply font-sans;
+    font-family: var(--font-sans), system-ui, sans-serif;
+  }
+
+  /* Global: todos los inputs, selects y textareas oscuros con texto claro */
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    background-color: var(--xalisco-black-soft) !important;
+    color: var(--xalisco-cream) !important;
+  }
+  input::placeholder,
+  textarea::placeholder {
+    color: color-mix(in srgb, var(--xalisco-cream) 55%, transparent) !important;
+  }
+  select option {
+    background-color: var(--xalisco-black-soft) !important;
+    color: var(--xalisco-cream) !important;
   }
 }
