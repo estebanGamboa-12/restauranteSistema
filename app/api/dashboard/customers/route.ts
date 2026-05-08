@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     supabaseAdmin
       .from("reservations")
       .select(
-        "id, customer_id, customer_name, customer_email, customer_phone, guests, reservation_date, reservation_time, status, notes, meal_type, table:tables(name)"
+        "id, customer_id, customer_name, customer_email, customer_phone, guests, reservation_date, reservation_time, status, notes, meal_type, table:tables!reservations_table_id_fkey(name)"
       )
       .eq("restaurant_id", restaurantId)
       .order("reservation_date", { ascending: false }),
