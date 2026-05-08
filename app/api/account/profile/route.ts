@@ -2,8 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { upsertCustomerFromAuth } from "@/lib/customer-records";
-
-const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID!;
+import { resolveRestaurantContext } from "@/lib/restaurant-context";
 
 export async function GET() {
   const supabase = createSupabaseServerClient();
@@ -13,7 +12,8 @@ export async function GET() {
   if (!user) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
-  if (!RESTAURANT_ID) {
+  const restaurant = await resolveRestaurantContext();
+  if (!restaurant?.id) {
     return NextResponse.json({ error: "Restaurante no configurado" }, { status: 500 });
   }
 
@@ -22,7 +22,7 @@ export async function GET() {
     .select(
       "name, email, phone, marketing_opt_in, marketing_channel_email, marketing_channel_whatsapp"
     )
-    .eq("restaurant_id", RESTAURANT_ID)
+    .eq("restaurant_id", restaurant.id)
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -44,7 +44,8 @@ export async function PUT(req: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
-  if (!RESTAURANT_ID) {
+  const restaurant = await resolveRestaurantContext(req);
+  if (!restaurant?.id) {
     return NextResponse.json({ error: "Restaurante no configurado" }, { status: 500 });
   }
 
@@ -69,7 +70,7 @@ export async function PUT(req: NextRequest) {
   }
 
   await upsertCustomerFromAuth({
-    restaurantId: RESTAURANT_ID,
+    restaurantId: restaurant.id,
     authUserId: user.id,
     email: user.email ?? null,
     name,

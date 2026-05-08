@@ -2,13 +2,11 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { resolveRestaurantContext } from "@/lib/restaurant-context";
 
-const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID;
-
-export async function GET(_req: NextRequest) {
-  void _req;
-  const restaurantId = (RESTAURANT_ID ?? "").trim();
-  if (!restaurantId) {
+export async function GET(req: NextRequest) {
+  const restaurant = await resolveRestaurantContext(req);
+  if (!restaurant?.id) {
     return NextResponse.json(
       { error: "Restaurant id not configured" },
       { status: 400 }
@@ -18,7 +16,7 @@ export async function GET(_req: NextRequest) {
   const { data, error } = await supabaseAdmin
     .from("tables")
     .select("id, name, capacity")
-    .eq("restaurant_id", restaurantId)
+    .eq("restaurant_id", restaurant.id)
     .order("name", { ascending: true });
 
   if (error) {
@@ -32,7 +30,7 @@ export async function GET(_req: NextRequest) {
   const debug =
     process.env.NODE_ENV === "development"
       ? {
-          restaurantId,
+          restaurantId: restaurant.id,
           zonesFound: Array.isArray(data) ? data.length : 0,
         }
       : undefined;

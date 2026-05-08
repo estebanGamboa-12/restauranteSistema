@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-
-const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID;
+import { resolveRestaurantContext } from "@/lib/restaurant-context";
 
 function slugify(input: string): string {
   return (input || "")
@@ -23,7 +22,8 @@ function formatPrice(cents: number): string {
 }
 
 export async function GET() {
-  if (!RESTAURANT_ID) {
+  const restaurant = await resolveRestaurantContext();
+  if (!restaurant?.id) {
     return NextResponse.json({ categories: [] });
   }
 
@@ -32,7 +32,7 @@ export async function GET() {
     .select(
       "id, section, name, description, price_cents, image_url, available, sort_order"
     )
-    .eq("restaurant_id", RESTAURANT_ID)
+    .eq("restaurant_id", restaurant.id)
     .eq("available", true)
     .order("section", { ascending: true })
     .order("sort_order", { ascending: true });

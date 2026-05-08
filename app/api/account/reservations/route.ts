@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase";
-
-const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID;
+import { resolveRestaurantContext } from "@/lib/restaurant-context";
 
 export async function GET() {
   const supabase = createSupabaseServerClient();
@@ -12,14 +11,15 @@ export async function GET() {
   if (!user) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
-  if (!RESTAURANT_ID) {
+  const restaurant = await resolveRestaurantContext();
+  if (!restaurant?.id) {
     return NextResponse.json({ error: "Restaurante no configurado" }, { status: 500 });
   }
 
   const { data: customer } = await supabaseAdmin
     .from("customers")
     .select("id")
-    .eq("restaurant_id", RESTAURANT_ID)
+    .eq("restaurant_id", restaurant.id)
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -31,7 +31,7 @@ export async function GET() {
     .select(
       "id, reservation_date, reservation_time, guests, status, meal_type, notes, deposit_paid, table:tables(name)"
     )
-    .eq("restaurant_id", RESTAURANT_ID)
+    .eq("restaurant_id", restaurant.id)
     .order("reservation_date", { ascending: false })
     .order("reservation_time", { ascending: false })
     .limit(100);

@@ -8,6 +8,7 @@ import { useSiteContent } from "@/components/providers/SiteContentProvider";
 
 export function HeroSection() {
   const content = useSiteContent("home.hero");
+  const globalContent = useSiteContent("global");
   const sectionRef = useRef<HTMLElement>(null);
   const bgRef = useRef<HTMLDivElement>(null);
   const mediaRef = useRef<HTMLDivElement>(null);
@@ -187,6 +188,8 @@ export function HeroSection() {
           }}
           aria-hidden
         />
+        <div className="absolute inset-x-[8%] top-[18%] h-40 rounded-full bg-xalisco-burnt-orange/10 blur-3xl" />
+        <div className="absolute bottom-[12%] right-[10%] h-52 w-52 rounded-full bg-xalisco-gold-bright/10 blur-3xl" />
       </div>
 
       {/* Contenido */}
@@ -197,7 +200,7 @@ export function HeroSection() {
         <div className="flex w-full items-center justify-between text-[10px] uppercase tracking-[0.3em] text-xalisco-cream/55 sm:tracking-[0.35em]">
           <span data-hero-meta className="flex items-center gap-2">
             <span className="h-px w-6 bg-xalisco-gold-bright/70 sm:w-8" />
-            Almonte · Huelva
+            {globalContent.location_short}
           </span>
           <span data-hero-meta className="hidden sm:block">
             Abierto · Casera · Para llevar

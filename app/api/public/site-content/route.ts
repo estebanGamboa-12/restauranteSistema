@@ -6,13 +6,13 @@ import {
   mergeSiteContent,
   type SiteSectionKey,
 } from "@/lib/site-content";
+import { resolveRestaurantContext } from "@/lib/restaurant-context";
 
 export const dynamic = "force-dynamic";
 
-const ENV_RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID;
-
 export async function GET() {
-  if (!ENV_RESTAURANT_ID) {
+  const restaurant = await resolveRestaurantContext();
+  if (!restaurant?.id) {
     // Sin restaurante configurado: devolvemos defaults para que la web no rompa.
     return NextResponse.json({ content: SITE_CONTENT_DEFAULTS });
   }
@@ -21,7 +21,7 @@ export async function GET() {
     const { data, error } = await supabaseAdmin
       .from("site_content")
       .select("section_key, content")
-      .eq("restaurant_id", ENV_RESTAURANT_ID);
+      .eq("restaurant_id", restaurant.id);
 
     if (error) {
       // Si la tabla aún no existe (migración no corrida), devolvemos defaults.

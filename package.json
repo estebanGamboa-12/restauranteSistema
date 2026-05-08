@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "create-user": "node --env-file=.env scripts/create-admin-user.mjs"
+    "create-user": "node --env-file=.env scripts/create-admin-user.mjs",
+    "seed:demo": "node --env-file=.env scripts/seed-demo-tenants.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.2.0",

@@ -1,21 +1,19 @@
 "use server";
 
 import { NextRequest, NextResponse } from "next/server";
-import Stripe from "stripe";
 import { supabaseAdmin } from "@/lib/supabase";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { syncReservationCustomerLink } from "@/lib/customer-records";
+import { resolveRestaurantContext } from "@/lib/restaurant-context";
+import { stripeServer as stripe } from "@/lib/stripe-server";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2026-02-25.clover",
-});
-
-const ENV_RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID;
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "").trim();
 const IS_LIVE = (process.env.STRIPE_SECRET_KEY ?? "").startsWith("sk_live_");
 
 export async function POST(req: NextRequest) {
   try {
+    const activeRestaurant = await resolveRestaurantContext(req);
+
     if (IS_LIVE && (!APP_URL || !APP_URL.startsWith("https://"))) {
       return NextResponse.json(
         {
@@ -46,7 +44,7 @@ export async function POST(req: NextRequest) {
 
     const effectiveRestaurantId =
       (typeof restaurant_id === "string" && restaurant_id.trim()) ||
-      ENV_RESTAURANT_ID ||
+      activeRestaurant?.id ||
       "";
 
     if (
@@ -63,7 +61,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Single-tenant by env: no permitir crear reservas para otros restaurantes.
-    if (ENV_RESTAURANT_ID && effectiveRestaurantId !== ENV_RESTAURANT_ID) {
+    if (activeRestaurant?.id && effectiveRestaurantId !== activeRestaurant.id) {
       return NextResponse.json(
         { error: "Restaurant not allowed" },
         { status: 403 }

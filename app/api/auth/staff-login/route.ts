@@ -3,10 +3,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabase";
+import { resolveRestaurantContext } from "@/lib/restaurant-context";
 
-const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID;
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const FALLBACK_SUPABASE_URL = "https://placeholder.supabase.co";
+const FALLBACK_SUPABASE_ANON_KEY = "placeholder-anon-key";
+const SUPABASE_URL =
+  process.env.NEXT_PUBLIC_SUPABASE_URL || FALLBACK_SUPABASE_URL;
+const SUPABASE_ANON_KEY =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || FALLBACK_SUPABASE_ANON_KEY;
 
 /**
  * Login por nombre + contraseña (staff sin email visible).
@@ -14,7 +18,9 @@ const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
  * Devuelve la sesión para que el cliente la establezca.
  */
 export async function POST(req: NextRequest) {
-  if (!RESTAURANT_ID || !SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  const restaurant = await resolveRestaurantContext(req);
+
+  if (!restaurant?.id || !SUPABASE_URL || !SUPABASE_ANON_KEY) {
     return NextResponse.json(
       { error: "Configuración del servidor incompleta" },
       { status: 500 }
@@ -35,7 +41,7 @@ export async function POST(req: NextRequest) {
   const { data: staffRow, error: staffError } = await supabaseAdmin
     .from("restaurant_staff")
     .select("email")
-    .eq("restaurant_id", RESTAURANT_ID)
+    .eq("restaurant_id", restaurant.id)
     .ilike("name", name)
     .limit(1)
     .maybeSingle();

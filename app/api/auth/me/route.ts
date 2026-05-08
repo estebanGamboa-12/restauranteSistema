@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
   const permissions = await getRolePermissionsFromDb(staff.restaurantId, staff.role);
-  const { data: restaurant } = await supabaseAdmin
+  const { data: restaurantRow } = await supabaseAdmin
     .from("restaurants")
     .select("name")
     .eq("id", staff.restaurantId)
@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     role: staff.role,
     restaurantId: staff.restaurantId,
-    restaurantName: restaurant?.name ?? null,
+    restaurantName: restaurantRow?.name ?? null,
     name: staff.name ?? null,
     email: staff.email ?? null,
     permissions,

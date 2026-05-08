@@ -1,22 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import Stripe from "stripe";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { canFitInZone, hasDuplicateReservation } from "@/lib/zone-capacity";
+import { resolveRestaurantContext } from "@/lib/restaurant-context";
+import { stripeServer as stripe } from "@/lib/stripe-server";
 
-const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID;
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2026-02-25.clover",
-});
-
-async function loadOwnedReservation(id: string, userId: string) {
-  if (!RESTAURANT_ID) return { error: "Restaurante no configurado", code: 500 };
+async function loadOwnedReservation(
+  id: string,
+  userId: string,
+  restaurantId: string
+) {
+  if (!restaurantId) return { error: "Restaurante no configurado", code: 500 };
 
   const { data: reservation } = await supabaseAdmin
     .from("reservations")
     .select("*, restaurant:restaurants(name, refund_window_hours, stripe_account_id)")
     .eq("id", id)
-    .eq("restaurant_id", RESTAURANT_ID)
+    .eq("restaurant_id", restaurantId)
     .maybeSingle();
   if (!reservation) return { error: "Reserva no encontrada", code: 404 };
 
@@ -50,6 +50,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const restaurant = await resolveRestaurantContext(req);
   const supabase = createSupabaseServerClient();
   const {
     data: { user },
@@ -57,8 +58,11 @@ export async function PATCH(
   if (!user) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
+  if (!restaurant?.id) {
+    return NextResponse.json({ error: "Restaurante no configurado" }, { status: 500 });
+  }
 
-  const loaded = await loadOwnedReservation(params.id, user.id);
+  const loaded = await loadOwnedReservation(params.id, user.id, restaurant.id);
   if (loaded.error)
     return NextResponse.json({ error: loaded.error }, { status: loaded.code });
 
@@ -124,7 +128,7 @@ export async function PATCH(
   }
 
   const duplicate = await hasDuplicateReservation(
-    RESTAURANT_ID!,
+    restaurant.id,
     newDate,
     newTime,
     reservation.customer_email ?? null,
@@ -158,9 +162,10 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const restaurant = await resolveRestaurantContext(req);
   const supabase = createSupabaseServerClient();
   const {
     data: { user },
@@ -168,8 +173,11 @@ export async function DELETE(
   if (!user) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
+  if (!restaurant?.id) {
+    return NextResponse.json({ error: "Restaurante no configurado" }, { status: 500 });
+  }
 
-  const loaded = await loadOwnedReservation(params.id, user.id);
+  const loaded = await loadOwnedReservation(params.id, user.id, restaurant.id);
   if (loaded.error)
     return NextResponse.json({ error: loaded.error }, { status: loaded.code });
 

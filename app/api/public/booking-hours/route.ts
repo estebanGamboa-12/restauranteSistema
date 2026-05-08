@@ -2,11 +2,11 @@
 
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-
-const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID;
+import { resolveRestaurantContext } from "@/lib/restaurant-context";
 
 export async function GET() {
-  if (!RESTAURANT_ID) {
+  const restaurant = await resolveRestaurantContext();
+  if (!restaurant?.id) {
     return NextResponse.json(
       { error: "Restaurant id not configured" },
       { status: 400 }
@@ -18,7 +18,7 @@ export async function GET() {
     .select(
       "timezone, comida_start, comida_end, cena_start, cena_end, slot_interval_minutes"
     )
-    .eq("id", RESTAURANT_ID)
+    .eq("id", restaurant.id)
     .maybeSingle();
 
   if (error) {

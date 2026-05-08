@@ -4,10 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { supabaseAdmin } from "@/lib/supabase";
 import { requirePermission } from "@/lib/api-rbac";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2026-02-25.clover",
-});
+import { stripeServer as stripe } from "@/lib/stripe-server";
 
 export async function GET(req: NextRequest) {
   const staff = await requirePermission(req, "payments");

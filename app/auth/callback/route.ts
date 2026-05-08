@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { upsertCustomerFromAuth } from "@/lib/customer-records";
-
-const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID;
+import { resolveRestaurantContext } from "@/lib/restaurant-context";
 
 export async function GET(req: NextRequest) {
   const { searchParams, origin } = new URL(req.url);
@@ -22,7 +21,8 @@ export async function GET(req: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (user && RESTAURANT_ID) {
+    const restaurant = await resolveRestaurantContext(req);
+    if (user && restaurant?.id) {
       const meta = (user.user_metadata ?? {}) as {
         name?: string;
         phone?: string;
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
         marketing_channel_whatsapp?: boolean;
       };
       await upsertCustomerFromAuth({
-        restaurantId: RESTAURANT_ID,
+        restaurantId: restaurant.id,
         authUserId: user.id,
         email: user.email ?? null,
         name: meta.name ?? null,

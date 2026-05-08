@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabase";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { resolveRestaurantContext } from "@/lib/restaurant-context";
 import type { DashboardRole } from "@/lib/rbac";
 
 export type StaffContext = {
@@ -14,10 +15,12 @@ export type StaffContext = {
   email?: string | null;
 };
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const ENV_RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID;
-
+const FALLBACK_SUPABASE_URL = "https://placeholder.supabase.co";
+const FALLBACK_SUPABASE_ANON_KEY = "placeholder-anon-key";
+const SUPABASE_URL =
+  process.env.NEXT_PUBLIC_SUPABASE_URL || FALLBACK_SUPABASE_URL;
+const SUPABASE_ANON_KEY =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || FALLBACK_SUPABASE_ANON_KEY;
 function parseGlobalAdminEmails(raw: string | undefined): string[] {
   return (raw ?? "")
     .split(",")
@@ -57,14 +60,15 @@ export async function getStaffFromRequest(req: NextRequest): Promise<StaffContex
       return null;
     }
 
-    // Admin global (por email) — puede entrar aunque no exista en restaurant_staff.
-    // En este proyecto el panel se considera single-tenant por env, así que el contexto
-    // de restaurante es el de NEXT_PUBLIC_RESTAURANT_ID.
+    const activeRestaurant = await resolveRestaurantContext(req);
+
+    // Admin global (por email) — puede entrar aunque no exista en restaurant_staff,
+    // pero siempre dentro del restaurante activo.
     const userEmail = (user.email ?? "").trim().toLowerCase();
     if (userEmail && GLOBAL_ADMIN_EMAILS.includes(userEmail)) {
-      if (!ENV_RESTAURANT_ID) return null;
+      if (!activeRestaurant?.id) return null;
       return {
-        restaurantId: ENV_RESTAURANT_ID,
+        restaurantId: activeRestaurant.id,
         role: "admin",
         userId: user.id,
         name: user.email ?? "Admin",
@@ -72,14 +76,13 @@ export async function getStaffFromRequest(req: NextRequest): Promise<StaffContex
       };
     }
 
-    // Single-tenant: el usuario debe pertenecer al restaurante de este deploy.
-    if (!ENV_RESTAURANT_ID) return null;
+    if (!activeRestaurant?.id) return null;
 
     const { data: staffRow } = await supabaseAdmin
       .from("restaurant_staff")
       .select("restaurant_id, role, name")
       .eq("user_id", user.id)
-      .eq("restaurant_id", ENV_RESTAURANT_ID)
+      .eq("restaurant_id", activeRestaurant.id)
       .limit(1)
       .maybeSingle();
 

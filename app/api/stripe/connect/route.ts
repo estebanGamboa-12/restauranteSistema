@@ -1,13 +1,10 @@
 "use server";
 
 import { NextRequest, NextResponse } from "next/server";
-import Stripe from "stripe";
 import { supabaseAdmin } from "@/lib/supabase";
 import { requirePermission } from "@/lib/api-rbac";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2026-02-25.clover",
-});
+import Stripe from "stripe";
+import { stripeServer as stripe } from "@/lib/stripe-server";
 
 function getErrorMessage(err: unknown): string | undefined {
   if (!err || typeof err !== "object") return undefined;

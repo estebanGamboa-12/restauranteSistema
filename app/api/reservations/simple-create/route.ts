@@ -4,11 +4,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { syncReservationCustomerLink } from "@/lib/customer-records";
-
-const RESTAURANT_ID = process.env.NEXT_PUBLIC_RESTAURANT_ID;
+import { resolveRestaurantContext } from "@/lib/restaurant-context";
 
 export async function POST(req: NextRequest) {
   try {
+    const restaurant = await resolveRestaurantContext(req);
     const supabase = createSupabaseServerClient();
     const {
       data: { user },
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!RESTAURANT_ID) {
+    if (!restaurant?.id) {
       return NextResponse.json(
         { message: "No se ha podido identificar el restaurante." },
         { status: 400 }
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
     const { data: restaurantRow, error: restaurantError } = await supabaseAdmin
       .from("restaurants")
       .select("id")
-      .eq("id", RESTAURANT_ID)
+      .eq("id", restaurant.id)
       .single();
 
     if (restaurantError && restaurantError.code !== "PGRST116") {
@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
     let baseQuery = supabaseAdmin
       .from("tables")
       .select("id, capacity, name")
-      .eq("restaurant_id", RESTAURANT_ID)
+      .eq("restaurant_id", restaurant.id)
       .gte("capacity", guests);
 
     baseQuery = baseQuery.eq("name", zonePreference);
@@ -145,7 +145,7 @@ export async function POST(req: NextRequest) {
       );
 
       const duplicate = await hasDuplicateReservation(
-        RESTAURANT_ID,
+        restaurant.id,
         date,
         time,
         email || null,
@@ -185,7 +185,7 @@ export async function POST(req: NextRequest) {
       const { data: onlineTable, error: onlineError } = await supabaseAdmin
         .from("tables")
         .select("id, capacity")
-        .eq("restaurant_id", RESTAURANT_ID)
+        .eq("restaurant_id", restaurant.id)
         .eq("name", "Online")
         .single();
 
@@ -209,7 +209,7 @@ export async function POST(req: NextRequest) {
         const { data: newTable, error: newTableError } = await supabaseAdmin
           .from("tables")
           .insert({
-            restaurant_id: RESTAURANT_ID,
+            restaurant_id: restaurant.id,
             name: "Online",
             capacity: guests,
           })
@@ -234,7 +234,7 @@ export async function POST(req: NextRequest) {
     const { data: inserted, error } = await supabaseAdmin
       .from("reservations")
       .insert({
-        restaurant_id: RESTAURANT_ID,
+        restaurant_id: restaurant.id,
         table_id: tableId,
         customer_name: name,
         customer_email: email || user.email || null,
@@ -262,7 +262,7 @@ export async function POST(req: NextRequest) {
 
     await syncReservationCustomerLink({
       reservationId: inserted.id,
-      restaurantId: RESTAURANT_ID,
+      restaurantId: restaurant.id,
       authUserId: user.id,
       name,
       email: email || user.email || null,

@@ -5,20 +5,23 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useSiteAuth } from "@/components/providers/SiteAuthProvider";
+import { useSiteContent } from "@/components/providers/SiteContentProvider";
 import { Magnetic } from "@/components/fx/Magnetic";
 import { gsap } from "gsap";
 
 const NAV_LINKS = [
   { href: "/", label: "Inicio", kicker: "01" },
-  { href: "/menu", label: "Carta", kicker: "02" },
-  { href: "/rooftop", label: "El local", kicker: "03" },
-  { href: "/reservas", label: "Reservas", kicker: "04" },
-  { href: "/contacto", label: "Contacto", kicker: "05" },
+  { href: "/restaurantes", label: "Restaurantes", kicker: "02" },
+  { href: "/menu", label: "Carta", kicker: "03" },
+  { href: "/rooftop", label: "El local", kicker: "04" },
+  { href: "/reservas", label: "Reservas", kicker: "05" },
+  { href: "/contacto", label: "Contacto", kicker: "06" },
 ];
 
 export function Navbar() {
   const pathname = usePathname();
   const { user, isStaff, loading, signOut } = useSiteAuth();
+  const globalContent = useSiteContent("global");
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -90,14 +93,17 @@ export function Navbar() {
             href="/"
             className="font-display text-lg font-semibold tracking-tight text-xalisco-cream transition-colors hover:text-xalisco-gold-bright lg:text-xl"
             data-cursor="grow"
-            aria-label="Paco's Food"
+            aria-label={globalContent.brand_name}
           >
             <span className="relative inline-flex items-baseline gap-1">
               <span
                 className="inline-block h-2 w-2 rounded-full bg-xalisco-burnt-orange"
                 aria-hidden
               />
-              Paco&apos;s<span className="text-xalisco-gold-bright italic">Food</span>
+              {globalContent.brand_name.split(" ").slice(0, 1).join(" ")}
+              <span className="text-xalisco-gold-bright italic">
+                {globalContent.brand_name.split(" ").slice(1).join(" ") || globalContent.tagline}
+              </span>
             </span>
           </Link>
 
@@ -281,7 +287,7 @@ export function Navbar() {
               data-menu-meta
               className="text-[11px] uppercase tracking-[0.28em] text-xalisco-cream/40"
             >
-              Almonte · Huelva
+              {globalContent.location_short}
             </p>
           </div>
         </div>
