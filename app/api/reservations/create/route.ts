@@ -13,17 +13,6 @@ const IS_LIVE = (process.env.STRIPE_SECRET_KEY ?? "").startsWith("sk_live_");
 export async function POST(req: NextRequest) {
   try {
     const activeRestaurant = await resolveRestaurantContext(req);
-
-    if (IS_LIVE && (!APP_URL || !APP_URL.startsWith("https://"))) {
-      return NextResponse.json(
-        {
-          error:
-            "Stripe LIVE requiere redirecciones HTTPS. Usa claves TEST en local o configura NEXT_PUBLIC_APP_URL con https://.",
-        },
-        { status: 400 }
-      );
-    }
-
     const body = await req.json();
 
     const {
@@ -60,7 +49,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Single-tenant by env: no permitir crear reservas para otros restaurantes.
     if (activeRestaurant?.id && effectiveRestaurantId !== activeRestaurant.id) {
       return NextResponse.json(
         { error: "Restaurant not allowed" },
@@ -68,7 +56,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 1) Obtener restaurante (deposito, stripe_account_id)
     const { data: restaurant, error: restaurantError } = await supabaseAdmin
       .from("restaurants")
       .select("id, name, deposit_amount, stripe_account_id")
@@ -82,15 +69,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!restaurant.stripe_account_id) {
+    const depositPerPerson = Math.max(0, Number(restaurant.deposit_amount ?? 0));
+    const totalDeposit = depositPerPerson * Number(guests);
+    const requiresCheckout =
+      !!restaurant.stripe_account_id && depositPerPerson > 0 && totalDeposit > 0;
+
+    if (
+      requiresCheckout &&
+      IS_LIVE &&
+      (!APP_URL || !APP_URL.startsWith("https://"))
+    ) {
       return NextResponse.json(
-        { error: "Restaurant has no Stripe account configured" },
+        {
+          error:
+            "Stripe LIVE requiere redirecciones HTTPS. Usa claves TEST en local o configura NEXT_PUBLIC_APP_URL con https://.",
+        },
         { status: 400 }
       );
     }
-
-    const depositPerPerson: number = Math.max(0, Number(restaurant.deposit_amount ?? 0));
-    const totalDeposit = depositPerPerson * Number(guests);
 
     const zoneName =
       typeof zonePreference === "string" ? zonePreference.trim() : "";
@@ -108,12 +104,14 @@ export async function POST(req: NextRequest) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
+
     if (!user) {
       return NextResponse.json(
-        { error: "Debes iniciar sesión para reservar." },
+        { error: "Debes iniciar sesion para reservar." },
         { status: 401 }
       );
     }
+
     const customerEmail =
       (typeof email === "string" && email.trim()) || user.email || null;
 
@@ -130,17 +128,17 @@ export async function POST(req: NextRequest) {
       undefined,
       mealTypeNorm
     );
+
     if (duplicate) {
       return NextResponse.json(
         {
           error:
-            "Ya tienes una reserva para esa franja el mismo día (mismo email o teléfono).",
+            "Ya tienes una reserva para esa franja el mismo dia (mismo email o telefono).",
         },
         { status: 400 }
       );
     }
 
-    // 2) Buscar zona por nombre y comprobar capacidad por franja (sum guests)
     const { data: zoneRow, error: zoneError } = await supabaseAdmin
       .from("tables")
       .select("id, capacity, name")
@@ -160,6 +158,7 @@ export async function POST(req: NextRequest) {
       reservation_time,
       Number(guests)
     );
+
     if (!fits) {
       return NextResponse.json(
         {
@@ -172,7 +171,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3) Crear reserva pending
     const { data: reservation, error: reservationError } = await supabaseAdmin
       .from("reservations")
       .insert({
@@ -184,10 +182,10 @@ export async function POST(req: NextRequest) {
         guests,
         reservation_date,
         reservation_time,
-        deposit_paid: false,
+        deposit_paid: !requiresCheckout,
         deposit_amount: totalDeposit,
         meal_type: mealTypeNorm,
-        status: "pending",
+        status: requiresCheckout ? "pending" : "confirmed",
         notes: typeof notes === "string" && notes.trim() ? notes.trim() : null,
       })
       .select("*")
@@ -214,7 +212,18 @@ export async function POST(req: NextRequest) {
       privacyAcceptedAt: new Date().toISOString(),
     });
 
-    // 4) Stripe Checkout para depósito (cuenta conectada)
+    if (!requiresCheckout) {
+      return NextResponse.json(
+        {
+          reservation_id: reservation.id,
+          checkout_url: null,
+          redirect_url: `/reservas/success?reservation_id=${reservation.id}&payment=not-required`,
+          payment_required: false,
+        },
+        { status: 201 }
+      );
+    }
+
     const session = await stripe.checkout.sessions.create(
       {
         mode: "payment",
@@ -225,14 +234,14 @@ export async function POST(req: NextRequest) {
               currency: "eur",
               unit_amount: depositPerPerson,
               product_data: {
-                name: `Depósito reserva - ${restaurant.name}`,
+                name: `Deposito reserva - ${restaurant.name}`,
                 description: `Reserva ${reservation_date} ${reservation_time} (${guests} personas)`,
               },
             },
             quantity: Number(guests),
           },
         ],
-        success_url: `${APP_URL}/reservas/success?reservation_id=${reservation.id}`,
+        success_url: `${APP_URL}/reservas/success?reservation_id=${reservation.id}&payment=required`,
         cancel_url: `${APP_URL}/reservas/cancel?reservation_id=${reservation.id}`,
         metadata: {
           reservation_id: reservation.id,
@@ -244,7 +253,6 @@ export async function POST(req: NextRequest) {
       }
     );
 
-    // Guardar ids de Stripe
     const { error: updateError } = await supabaseAdmin
       .from("reservations")
       .update({
@@ -261,6 +269,8 @@ export async function POST(req: NextRequest) {
       {
         reservation_id: reservation.id,
         checkout_url: session.url,
+        redirect_url: session.url,
+        payment_required: true,
       },
       { status: 201 }
     );
@@ -272,4 +282,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

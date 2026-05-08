@@ -7,6 +7,8 @@ import { useEffect, useState } from "react";
 export function ReservaSuccessClient() {
   const params = useSearchParams();
   const reservationId = params.get("reservation_id");
+  const paymentMode = params.get("payment");
+  const paymentRequired = paymentMode !== "not-required";
   const [status, setStatus] = useState<string | null>(null);
   const [depositPaid, setDepositPaid] = useState<boolean | null>(null);
 
@@ -14,6 +16,7 @@ export function ReservaSuccessClient() {
     if (!reservationId) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
+
     const poll = async () => {
       try {
         const res = await fetch(`/api/public/reservations/${reservationId}`, {
@@ -21,18 +24,21 @@ export function ReservaSuccessClient() {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) return;
-        const r = data.reservation;
-        if (!cancelled && r) {
-          setStatus(r.status ?? null);
-          setDepositPaid(!!r.deposit_paid);
-          if (r.status === "confirmed") return;
+        const reservation = data.reservation;
+        if (!cancelled && reservation) {
+          setStatus(reservation.status ?? null);
+          setDepositPaid(!!reservation.deposit_paid);
+          if (reservation.status === "confirmed") return;
         }
       } catch {
         // ignore
       }
+
       timer = setTimeout(poll, 2500);
     };
+
     void poll();
+
     return () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
@@ -42,16 +48,18 @@ export function ReservaSuccessClient() {
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-2xl flex-col items-center justify-center px-4 py-16 text-center">
       <p className="text-xs uppercase tracking-[0.28em] text-xalisco-gold">
-        Pago completado
+        {paymentRequired ? "Pago completado" : "Reserva confirmada"}
       </p>
       <h1 className="mt-4 font-display text-4xl font-semibold tracking-tight text-xalisco-cream md:text-5xl">
         Reserva recibida
       </h1>
       <p className="mt-4 text-sm text-xalisco-cream/75">
-        Hemos recibido tu pago.{" "}
+        {paymentRequired
+          ? "Hemos recibido tu pago. "
+          : "Hemos registrado tu solicitud sin pago online. "}
         {status === "confirmed"
-          ? "Tu reserva está confirmada."
-          : "Estamos confirmando tu reserva…"}
+          ? "Tu reserva esta confirmada."
+          : "Estamos confirmando tu reserva..."}
       </p>
 
       {reservationId && (
@@ -60,9 +68,9 @@ export function ReservaSuccessClient() {
           <span className="text-xalisco-cream/80">{reservationId}</span>
         </p>
       )}
-      {depositPaid !== null && (
+      {depositPaid !== null && paymentRequired && (
         <p className="mt-2 text-[11px] text-xalisco-cream/60">
-          Depósito:{" "}
+          Deposito:{" "}
           <span className="text-xalisco-cream/80">
             {depositPaid ? "pagado" : "pendiente"}
           </span>
@@ -96,4 +104,3 @@ export function ReservaSuccessClient() {
     </div>
   );
 }
-

@@ -185,12 +185,20 @@ export default function ReservasPage() {
         return;
       }
 
+      if (typeof data.redirect_url === "string" && data.redirect_url) {
+        window.location.href = data.redirect_url;
+        return;
+      }
+
       if (data.checkout_url) {
         window.location.href = data.checkout_url as string;
         return;
       }
 
-      setFeedback({ type: "error", text: "No se pudo iniciar el pago." });
+      setFeedback({
+        type: "success",
+        text: "Reserva creada correctamente.",
+      });
     } catch {
       setFeedback({
         type: "error",
